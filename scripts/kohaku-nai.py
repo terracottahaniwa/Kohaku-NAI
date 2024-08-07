@@ -11,13 +11,18 @@ from torchvision.transforms.functional import to_tensor
 
 from modules import shared, scripts, script_callbacks, images, devices
 from modules.sd_samplers_common import images_tensor_to_samples
-from modules.processing import Processed, StableDiffusionProcessingTxt2Img
+from modules.processing import (
+    Processed,
+    StableDiffusionProcessingTxt2Img,
+    StableDiffusionProcessingImg2Img,
+)
 
 from kohaku_nai.utils import (
     remote_gen,
     generate_novelai_image,
     set_client,
     image_from_bytes,
+    free_check,
 )
 
 
@@ -38,10 +43,15 @@ class KohakuNAIScript(scripts.Script):
         return "Kohaku NAI Client"
 
     def show(self, is_img2img):
-        return not is_img2img
+        return True
 
     def ui(self, is_img2img):
         info = gr.Markdown("""### Please select the `Sampler` options here""")
+        if is_img2img:
+            info2 = gr.Markdown(
+                "Extra noise multiplier for img2img and hires fix "
+                "(`img2img_extra_noise`) is used for Noise parameter"
+            )
         with gr.Row():
             sampler = gr.Dropdown(
                 choices=[
@@ -68,8 +78,8 @@ class KohakuNAIScript(scripts.Script):
         with gr.Row():
             dyn_threshold = gr.Checkbox(False, label="Dynamic Thresholding")
             cfg_rescale = gr.Slider(0, 1, 0, step=0.01, label="CFG rescale")
-
-        return [info, sampler, scheduler, smea, dyn, dyn_threshold, cfg_rescale]
+        free_only = gr.Checkbox(True, label="Free only")
+        return [info, sampler, scheduler, smea, dyn, dyn_threshold, cfg_rescale, free_only]
 
     def process(self, p, **kwargs):
         print(kwargs)
@@ -77,7 +87,7 @@ class KohakuNAIScript(scripts.Script):
 
     def run(
         self,
-        p: StableDiffusionProcessingTxt2Img,
+        p: StableDiffusionProcessingTxt2Img | StableDiffusionProcessingImg2Img,
         _,
         sampler,
         scheduler,
@@ -85,7 +95,16 @@ class KohakuNAIScript(scripts.Script):
         dyn,
         dyn_threshold,
         cfg_rescale,
+        free_only,
     ):
+        if free_only:
+            if not free_check(
+                width=p.width,
+                height=p.height,
+                steps=p.steps,
+            ):
+                raise Exception("Free settings exceeded.")
+
         if p.scripts is not None:
             p.scripts.before_process(p)
         if p.seed == -1:
@@ -99,14 +118,17 @@ class KohakuNAIScript(scripts.Script):
 
         p.prompts = p.all_prompts
         p.negative_prompts = p.all_negative_prompts
-        p.hr_prompts = p.all_hr_prompts
-        p.hr_negative_prompts = p.all_hr_negative_prompts
+        if isinstance(p, StableDiffusionProcessingTxt2Img):
+            p.hr_prompts = p.all_hr_prompts
+            p.hr_negative_prompts = p.all_hr_negative_prompts
 
         p.parse_extra_network_prompts()
         p.setup_conds()
         p.init(None, None, None)
 
         if shared.opts.knai_api_call == "Remote":
+            if isinstance(p, StableDiffusionProcessingImg2Img):
+                raise Exception("Remote KNAI API is not supported for img2img.")
             login_status = loop.run_until_complete(
                 (
                     set_client(
@@ -169,6 +191,11 @@ class KohakuNAIScript(scripts.Script):
                             dyn,
                             dyn_threshold,
                             cfg_rescale,
+                            strength=p.denoising_strength if hasattr(p, "denoising_strength") else None,
+                            noise=shared.opts.img2img_extra_noise,
+                            image=p.init_images[i] if hasattr(p, "init_images") else None,
+                            mask=p.image_mask if hasattr(p, "image_mask") else None,
+                            extra_noise_seed=p.seeds[i],
                         )
                         for i in range(p.batch_size)
                     ]
@@ -186,7 +213,7 @@ class KohakuNAIScript(scripts.Script):
             raise Exception("Failed to generate image: " + str(failed_img_data))
         nai_infos = [images.read_info_from_image(img) for img in imgs]
 
-        if p.enable_hr:
+        if p.enable_hr if hasattr(p, "enable_hr") else False:
             imgs_tensor = torch.stack([to_tensor(img.convert("RGB")) for img in imgs])
             imgs_latent = images_tensor_to_samples(imgs_tensor)
 

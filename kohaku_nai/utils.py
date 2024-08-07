@@ -6,6 +6,7 @@ import io
 import zipfile
 import json
 import piexif
+import base64
 from typing import Any
 
 from PIL import Image
@@ -229,6 +230,23 @@ async def generate_novelai_image(
             "uncond_scale": 1,
         },
     }
+
+    def pil_image_to_b64_png(pil_image):
+        bytes_data = io.BytesIO()
+        pil_image.save(bytes_data, format="PNG")
+        b64_png = base64.b64encode(bytes_data.getvalue())
+        return b64_png.decode('utf-8')
+
+    if kwargs["image"]:
+        payload["action"] = "img2img"
+        payload["parameters"]["strength"] = kwargs["strength"]
+        payload["parameters"]["noise"] = kwargs["noise"]
+        payload["parameters"]["image"] = pil_image_to_b64_png(kwargs["image"])
+        payload["parameters"]["extra_noise_seed"] = kwargs["extra_noise_seed"]
+        if kwargs["mask"]:
+            payload["model"] = "nai-diffusion-3-inpainting"
+            payload["action"] = "infill"
+            payload["parameters"]["mask"] = pil_image_to_b64_png(kwargs["mask"])
 
     # Send the POST request
     response = await client.post(f"{API_IMAGE_URL}/ai/generate-image", json=payload)
