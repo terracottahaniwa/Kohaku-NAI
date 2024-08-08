@@ -46,12 +46,12 @@ class KohakuNAIScript(scripts.Script):
         return True
 
     def ui(self, is_img2img):
-        info = gr.Markdown("""### Please select the `Sampler` options here""")
-        if is_img2img:
-            info2 = gr.Markdown(
-                "Extra noise multiplier for img2img and hires fix "
-                "(`img2img_extra_noise`) is used for Noise parameter"
-            )
+        info1 = gr.Markdown("""### Please select the `Sampler` options here""")
+        info2 = gr.Markdown(
+            "Extra noise multiplier for img2img and hires fix "
+            "(`img2img_extra_noise`) is used for Noise parameter",
+            visible=True if is_img2img else False
+        )
         with gr.Row():
             sampler = gr.Dropdown(
                 choices=[
@@ -78,8 +78,11 @@ class KohakuNAIScript(scripts.Script):
         with gr.Row():
             dyn_threshold = gr.Checkbox(False, label="Dynamic Thresholding")
             cfg_rescale = gr.Slider(0, 1, 0, step=0.01, label="CFG rescale")
+        add_original_image = gr.Checkbox(True, label="Add original image", 
+                                         visible=True if is_img2img else False)
         free_only = gr.Checkbox(True, label="Free only")
-        return [info, sampler, scheduler, smea, dyn, dyn_threshold, cfg_rescale, free_only]
+        return [sampler, scheduler, smea, dyn, dyn_threshold, cfg_rescale, 
+                add_original_image, free_only]
 
     def process(self, p, **kwargs):
         print(kwargs)
@@ -88,13 +91,13 @@ class KohakuNAIScript(scripts.Script):
     def run(
         self,
         p: StableDiffusionProcessingTxt2Img | StableDiffusionProcessingImg2Img,
-        _,
         sampler,
         scheduler,
         smea,
         dyn,
         dyn_threshold,
         cfg_rescale,
+        add_original_image,
         free_only,
     ):
         if free_only:
@@ -194,6 +197,7 @@ class KohakuNAIScript(scripts.Script):
                             strength=p.denoising_strength if hasattr(p, "denoising_strength") else None,
                             noise=shared.opts.img2img_extra_noise,
                             image=p.init_images[i] if hasattr(p, "init_images") else None,
+                            add_original_image=add_original_image,
                             mask=p.image_mask if hasattr(p, "image_mask") else None,
                             extra_noise_seed=p.seeds[i],
                         )

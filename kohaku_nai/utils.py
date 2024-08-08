@@ -246,6 +246,7 @@ async def generate_novelai_image(
         if kwargs["mask"]:
             payload["model"] = "nai-diffusion-3-inpainting"
             payload["action"] = "infill"
+            payload["parameters"]["add_original_image"] = kwargs["add_original_image"]
             payload["parameters"]["mask"] = pil_image_to_b64_png(kwargs["mask"])
 
     # Send the POST request
