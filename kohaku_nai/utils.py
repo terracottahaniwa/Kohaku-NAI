@@ -5,12 +5,14 @@ import re
 import io
 import zipfile
 import json
-import piexif
 from typing import Any
 
+import piexif
 from PIL import Image
 from httpx import AsyncClient
 from curl_cffi.requests import AsyncSession
+
+from kohaku_nai import monkey_patch
 
 
 if sys.platform == "win32":
@@ -229,6 +231,8 @@ async def generate_novelai_image(
             "uncond_scale": 1,
         },
     }
+
+    payload = monkey_patch.i2i_support(payload, **kwargs)
 
     # Send the POST request
     response = await client.post(f"{API_IMAGE_URL}/ai/generate-image", json=payload)
