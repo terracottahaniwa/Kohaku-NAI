@@ -110,6 +110,17 @@ def image_to_base64png(image: Image) -> str:
     return base64.b64encode(bytes_io.getvalue()).decode("ascii")
 
 
+def get_left_anlas(loop: asyncio.AbstractEventLoop) -> int:
+    response = loop.run_until_complete(
+        kohaku_nai.utils.global_client.get(
+            f"{kohaku_nai.utils.API_URL}/user/subscription",
+        )
+    )
+    subscription = response.json()
+    anlas = sum(subscription["trainingStepsLeft"].values())
+    return anlas
+
+
 def director_tools(p, req_type, emotion, defry) -> (
         Tuple[List[Image], List[str]]):
     req_type = req_type.replace("_", "-")
@@ -152,16 +163,18 @@ def director_tools(p, req_type, emotion, defry) -> (
             json=payload
         )
     )
-    del payload["image"]
-    content = io.BytesIO(response.content)
-    with zipfile.ZipFile(content) as archive:
+    application_zip = io.BytesIO(response.content)
+    with zipfile.ZipFile(application_zip) as archive:
         images = []
         infotexts = []
         for file_name in archive.namelist():
             stream = archive.read(file_name)
             image = PIL.Image.open(io.BytesIO(stream))
             images.append(image)
+            payload["image"] = payload["image"][:32] + "..."
             infotexts.append(f"{payload=}, {file_name=}")
+        left_anlas = get_left_anlas(loop)
+        print(f"{left_anlas=}")
         return images, infotexts
 
 

@@ -278,6 +278,8 @@ class KohakuNAIScript(scripts.Script):
         else:
             seeds = p.seeds
 
+        left_anlas = monkey_patch.get_left_anlas(loop)
+        print(f"{left_anlas=}")
         res = Processed(p, imgs, seed=seeds, infotexts=infotexts)
         return res
 
