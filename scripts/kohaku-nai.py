@@ -54,6 +54,7 @@ class KohakuNAIScript(scripts.Script):
                     "k_euler",
                     "k_euler_ancestral",
                     "k_dpmpp_2s_ancestral",
+                    "k_dpmpp_2m_sde",
                     "k_dpmpp_2m",
                     "k_dpmpp_sde",
                     "ddim_v3",
