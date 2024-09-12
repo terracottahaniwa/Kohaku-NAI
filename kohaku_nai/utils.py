@@ -136,6 +136,7 @@ async def remote_gen(
     dyn_threshold=False,
     cfg_rescale=0,
     extra_infos={},
+    priority=0,
     **kwargs,
 ):
     payload = {
@@ -161,6 +162,7 @@ async def remote_gen(
             if isinstance(extra_infos, str)
             else json.dumps(extra_infos, ensure_ascii=False)
         ),
+        "priority": priority,
     }
     response = await global_client.post(f"{end_point}/gen", json=payload)
     if response.status_code == 200:
