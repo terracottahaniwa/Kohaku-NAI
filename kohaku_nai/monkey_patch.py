@@ -3,6 +3,7 @@ import sys
 import base64
 import asyncio
 import zipfile
+import datetime
 from typing import Any, Tuple, List, Dict
 
 import gradio as gr
@@ -174,7 +175,9 @@ def director_tools(p, req_type, emotion, defry) -> (
             payload["image"] = payload["image"][:32] + "..."
             infotexts.append(f"{payload=}, {file_name=}")
         left_anlas = get_left_anlas(loop)
-        print(f"{left_anlas=}")
+        now = datetime.datetime.now()
+        now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+        print(f"{now_str}  Anlas: {left_anlas}")
         return images, infotexts
 
 

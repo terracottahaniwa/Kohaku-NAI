@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import sys
 import random
 
@@ -280,7 +281,9 @@ class KohakuNAIScript(scripts.Script):
             seeds = p.seeds
 
         left_anlas = monkey_patch.get_left_anlas(loop)
-        print(f"{left_anlas=}")
+        now = datetime.datetime.now()
+        now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+        print(f"{now_str}  Anlas: {left_anlas}")
         res = Processed(p, imgs, seed=seeds, infotexts=infotexts)
         return res
 
